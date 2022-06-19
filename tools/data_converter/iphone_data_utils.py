@@ -17,7 +17,7 @@ def get_image_index_str(img_idx, use_prefix_id=False):
         return "{:06d}".format(img_idx)
 
 
-def get_kitti_info_path(
+def get_iphone_info_path(
     idx,
     prefix,
     info_type="image_2",
@@ -51,7 +51,7 @@ def get_image_path(
     info_type="image_2",
     use_prefix_id=False,
 ):
-    return get_kitti_info_path(
+    return get_iphone_info_path(
         idx,
         prefix,
         info_type,
@@ -72,7 +72,7 @@ def get_label_path(
     info_type="label_2",
     use_prefix_id=False,
 ):
-    return get_kitti_info_path(
+    return get_iphone_info_path(
         idx,
         prefix,
         info_type,
@@ -93,7 +93,7 @@ def get_plane_path(
     info_type="planes",
     use_prefix_id=False,
 ):
-    return get_kitti_info_path(
+    return get_iphone_info_path(
         idx,
         prefix,
         info_type,
@@ -113,7 +113,7 @@ def get_velodyne_path(
     exist_check=True,
     use_prefix_id=False,
 ):
-    return get_kitti_info_path(
+    return get_iphone_info_path(
         idx,
         prefix,
         "velodyne",
@@ -133,7 +133,7 @@ def get_calib_path(
     exist_check=True,
     use_prefix_id=False,
 ):
-    return get_kitti_info_path(
+    return get_iphone_info_path(
         idx,
         prefix,
         "calib",
@@ -153,7 +153,7 @@ def get_pose_path(
     exist_check=True,
     use_prefix_id=False,
 ):
-    return get_kitti_info_path(
+    return get_iphone_info_path(
         idx, prefix, "pose", ".txt", training, relative_path, exist_check, use_prefix_id
     )
 
@@ -166,7 +166,7 @@ def get_timestamp_path(
     exist_check=True,
     use_prefix_id=False,
 ):
-    return get_kitti_info_path(
+    return get_iphone_info_path(
         idx,
         prefix,
         "timestamp",
@@ -230,7 +230,7 @@ def _extend_matrix(mat):
     return mat
 
 
-def get_kitti_image_info(
+def get_iphone_image_info(
     path,
     training=True,
     label_info=True,
@@ -244,10 +244,10 @@ def get_kitti_image_info(
     with_imageshape=True,
 ):
     """
-    KITTI annotation format version 2:
+    iphone annotation format version 2:
     {
         [optional]points: [N, 3+] point cloud
-        [optional, for kitti]image: {
+        [optional, for iphone]image: {
             image_idx: ...
             image_path: ...
             image_shape: ...
@@ -256,7 +256,7 @@ def get_kitti_image_info(
             num_features: 4
             velodyne_path: ...
         }
-        [optional, for kitti]calib: {
+        [optional, for iphone]calib: {
             R0_rect: ...
             Tr_velo_to_cam: ...
             P2: ...
@@ -266,7 +266,7 @@ def get_kitti_image_info(
             dimensions: [num_gt, 3] array
             rotation_y: [num_gt] angle array
             name: [num_gt] ground truth name array
-            [optional]difficulty: kitti difficulty
+            [optional]difficulty: iphone difficulty
             [optional]group_ids: used for multi-part object
         }
     }
@@ -371,10 +371,10 @@ def get_kitti_image_info(
 class WaymoInfoGatherer:
     """
     Parallel version of waymo dataset information gathering.
-    Waymo annotation format version like KITTI:
+    Waymo annotation format version like iphone:
     {
         [optional]points: [N, 3+] point cloud
-        [optional, for kitti]image: {
+        [optional, for iphone]image: {
             image_idx: ...
             image_path: ...
             image_shape: ...
@@ -383,7 +383,7 @@ class WaymoInfoGatherer:
             num_features: 6
             velodyne_path: ...
         }
-        [optional, for kitti]calib: {
+        [optional, for iphone]calib: {
             R0_rect: ...
             Tr_velo_to_cam0: ...
             P0: ...
@@ -393,7 +393,7 @@ class WaymoInfoGatherer:
             dimensions: [num_gt, 3] array
             rotation_y: [num_gt] angle array
             name: [num_gt] ground truth name array
-            [optional]difficulty: kitti difficulty
+            [optional]difficulty: iphone difficulty
             [optional]group_ids: used for multi-part object
         }
     }
@@ -586,7 +586,7 @@ class WaymoInfoGatherer:
         return list(image_infos)
 
 
-def kitti_anno_to_label_file(annos, folder):
+def iphone_anno_to_label_file(annos, folder):
     folder = Path(folder)
     for anno in annos:
         image_idx = anno["metadata"]["image_idx"]
@@ -601,7 +601,7 @@ def kitti_anno_to_label_file(annos, folder):
                 "rotation_y": anno["rotation_y"][j],
                 "score": anno["score"][j],
             }
-            label_line = kitti_result_line(label_dict)
+            label_line = iphone_result_line(label_dict)
             label_lines.append(label_line)
         label_file = folder / f"{get_image_index_str(image_idx)}.txt"
         label_str = "\n".join(label_lines)
@@ -657,7 +657,7 @@ def add_difficulty_to_annos(info):
     return diff
 
 
-def kitti_result_line(result_dict, precision=4):
+def iphone_result_line(result_dict, precision=4):
     prec_float = "{" + ":.{}f".format(precision) + "}"
     res_line = []
     all_field_default = OrderedDict(

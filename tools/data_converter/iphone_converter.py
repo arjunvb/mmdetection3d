@@ -7,17 +7,17 @@ import numpy as np
 from nuscenes.utils.geometry_utils import view_points
 
 from mmdet3d.core.bbox import box_np_ops, points_cam2img
-from .kitti_data_utils import WaymoInfoGatherer, get_kitti_image_info
+from .iphone_data_utils import WaymoInfoGatherer, get_iphone_image_info
 from .nuscenes_converter import post_process_coords
 
-kitti_categories = ("Pedestrian", "Cyclist", "Car")
+iphone_categories = "Car"
 
 
-def convert_to_kitti_info_version2(info):
-    """convert kitti info v1 to v2 if possible.
+def convert_to_iphone_info_version2(info):
+    """convert iphone info v1 to v2 if possible.
 
     Args:
-        info (dict): Info of the input kitti data.
+        info (dict): Info of the input iphone data.
             - image (dict): image info
             - calib (dict): calibration info
             - point_cloud (dict): point cloud info
@@ -128,9 +128,6 @@ def _calculate_num_points_in_gt(
         points_v = np.fromfile(v_path, dtype=np.float32, count=-1).reshape(
             [-1, num_features]
         )
-        import sys
-
-        sys.exit(points_v.shape)
         rect = calib["R0_rect"]
         Trv2c = calib["Tr_velo_to_cam"]
         P2 = calib["P2"]
@@ -142,7 +139,7 @@ def _calculate_num_points_in_gt(
         # points_v = points_v[points_v[:, 0] > 0]
         annos = info["annos"]
         num_obj = len([n for n in annos["name"] if n != "DontCare"])
-        # annos = kitti.filter_kitti_anno(annos, ['DontCare'])
+        # annos = iphone.filter_iphone_anno(annos, ['DontCare'])
         dims = annos["dimensions"][:num_obj]
         loc = annos["location"][:num_obj]
         rots = annos["rotation_y"][:num_obj]
@@ -155,17 +152,17 @@ def _calculate_num_points_in_gt(
         annos["num_points_in_gt"] = num_points_in_gt.astype(np.int32)
 
 
-def create_kitti_info_file(
-    data_path, pkl_prefix="kitti", with_plane=False, save_path=None, relative_path=True
+def create_iphone_info_file(
+    data_path, pkl_prefix="iphone", with_plane=False, save_path=None, relative_path=True
 ):
-    """Create info file of KITTI dataset.
+    """Create info file of iphone dataset.
 
     Given the raw data, generate its related info file in pkl format.
 
     Args:
         data_path (str): Path of the data root.
         pkl_prefix (str, optional): Prefix of the info file to be generated.
-            Default: 'kitti'.
+            Default: 'iphone'.
         with_plane (bool, optional): Whether to use plane information.
             Default: False.
         save_path (str, optional): Path to save the info file.
@@ -183,7 +180,7 @@ def create_kitti_info_file(
         save_path = Path(data_path)
     else:
         save_path = Path(save_path)
-    kitti_infos_train = get_kitti_image_info(
+    iphone_infos_train = get_iphone_image_info(
         data_path,
         training=True,
         velodyne=True,
@@ -192,11 +189,11 @@ def create_kitti_info_file(
         image_ids=train_img_ids,
         relative_path=relative_path,
     )
-    _calculate_num_points_in_gt(data_path, kitti_infos_train, relative_path)
+    _calculate_num_points_in_gt(data_path, iphone_infos_train, relative_path)
     filename = save_path / f"{pkl_prefix}_infos_train.pkl"
-    print(f"Kitti info train file is saved to {filename}")
-    mmcv.dump(kitti_infos_train, filename)
-    kitti_infos_val = get_kitti_image_info(
+    print(f"iphone info train file is saved to {filename}")
+    mmcv.dump(iphone_infos_train, filename)
+    iphone_infos_val = get_iphone_image_info(
         data_path,
         training=True,
         velodyne=True,
@@ -205,15 +202,15 @@ def create_kitti_info_file(
         image_ids=val_img_ids,
         relative_path=relative_path,
     )
-    _calculate_num_points_in_gt(data_path, kitti_infos_val, relative_path)
+    _calculate_num_points_in_gt(data_path, iphone_infos_val, relative_path)
     filename = save_path / f"{pkl_prefix}_infos_val.pkl"
-    print(f"Kitti info val file is saved to {filename}")
-    mmcv.dump(kitti_infos_val, filename)
+    print(f"iphone info val file is saved to {filename}")
+    mmcv.dump(iphone_infos_val, filename)
     filename = save_path / f"{pkl_prefix}_infos_trainval.pkl"
-    print(f"Kitti info trainval file is saved to {filename}")
-    mmcv.dump(kitti_infos_train + kitti_infos_val, filename)
+    print(f"iphone info trainval file is saved to {filename}")
+    mmcv.dump(iphone_infos_train + iphone_infos_val, filename)
 
-    kitti_infos_test = get_kitti_image_info(
+    iphone_infos_test = get_iphone_image_info(
         data_path,
         training=False,
         label_info=False,
@@ -224,8 +221,8 @@ def create_kitti_info_file(
         relative_path=relative_path,
     )
     filename = save_path / f"{pkl_prefix}_infos_test.pkl"
-    print(f"Kitti info test file is saved to {filename}")
-    mmcv.dump(kitti_infos_test, filename)
+    print(f"iphone info test file is saved to {filename}")
+    mmcv.dump(iphone_infos_test, filename)
 
 
 def create_waymo_info_file(
@@ -325,9 +322,9 @@ def _create_reduced_point_cloud(
         front_camera_id (int, optional): The referenced/front camera ID.
             Default: 2.
     """
-    kitti_infos = mmcv.load(info_path)
+    iphone_infos = mmcv.load(info_path)
 
-    for info in mmcv.track_iter_progress(kitti_infos):
+    for info in mmcv.track_iter_progress(iphone_infos):
         pc_info = info["point_cloud"]
         image_info = info["image"]
         calib = info["calib"]
@@ -422,19 +419,16 @@ def export_2d_annotation(root_path, info_path, mono3d=True):
             Default: True.
     """
     # get bbox annotations for camera
-    kitti_infos = mmcv.load(info_path)
-    import sys
-
-    sys.exit(kitti_infos)
+    iphone_infos = mmcv.load(info_path)
     cat2Ids = [
-        dict(id=kitti_categories.index(cat_name), name=cat_name)
-        for cat_name in kitti_categories
+        dict(id=iphone_categories.index(cat_name), name=cat_name)
+        for cat_name in iphone_categories
     ]
     coco_ann_id = 0
     coco_2d_dict = dict(annotations=[], images=[], categories=cat2Ids)
     from os import path as osp
 
-    for info in mmcv.track_iter_progress(kitti_infos):
+    for info in mmcv.track_iter_progress(iphone_infos):
         coco_infos = get_2d_boxes(info, occluded=[0, 1, 2, 3], mono3d=mono3d)
         (height, width, _) = mmcv.imread(
             osp.join(root_path, info["image"]["image_path"])
@@ -570,7 +564,7 @@ def get_2d_boxes(info, occluded, mono3d=True):
                 .squeeze()
                 .tolist()
             )
-            repro_rec["velo_cam3d"] = -1  # no velocity in KITTI
+            repro_rec["velo_cam3d"] = -1  # no velocity in iphone
 
             center3d = np.array(loc).reshape([1, 3])
             center2d = points_cam2img(center3d, camera_intrinsic, with_depth=True)
@@ -580,7 +574,7 @@ def get_2d_boxes(info, occluded, mono3d=True):
             if repro_rec["center2d"][2] <= 0:
                 continue
 
-            repro_rec["attribute_name"] = -1  # no attribute in KITTI
+            repro_rec["attribute_name"] = -1  # no attribute in iphone
             repro_rec["attribute_id"] = -1
 
         repro_recs.append(repro_rec)
@@ -634,11 +628,11 @@ def generate_record(ann_rec, x1, y1, x2, y2, sample_data_token, filename):
     coco_rec["image_id"] = sample_data_token
     coco_rec["area"] = (y2 - y1) * (x2 - x1)
 
-    if repro_rec["category_name"] not in kitti_categories:
+    if repro_rec["category_name"] not in iphone_categories:
         return None
     cat_name = repro_rec["category_name"]
     coco_rec["category_name"] = cat_name
-    coco_rec["category_id"] = kitti_categories.index(cat_name)
+    coco_rec["category_id"] = iphone_categories.index(cat_name)
     coco_rec["bbox"] = [x1, y1, x2 - x1, y2 - y1]
     coco_rec["iscrowd"] = 0
 
