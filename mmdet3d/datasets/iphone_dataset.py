@@ -56,14 +56,14 @@ class IphoneDataset(Custom3DDataset):
             filter invalid predicted boxes.
             Default: [0, -40, -3, 70.4, 40, 0.0].
     """
-    CLASSES = ("car", "pedestrian", "cyclist")
+    CLASSES = ["car"]
 
     def __init__(
         self,
         data_root,
         ann_file,
         split,
-        pts_prefix="velodyne",
+        pts_prefix="pcl",
         pipeline=None,
         classes=None,
         modality=None,
@@ -100,7 +100,7 @@ class IphoneDataset(Custom3DDataset):
         Returns:
             str: Name of the point cloud file.
         """
-        pts_filename = osp.join(self.root_split, self.pts_prefix, f"{idx:06d}.bin")
+        pts_filename = osp.join(self.root_split, self.pts_prefix, f"{idx:09d}.bin")
         return pts_filename
 
     def get_data_info(self, index):
@@ -126,10 +126,10 @@ class IphoneDataset(Custom3DDataset):
         img_filename = os.path.join(self.data_root, info["image"]["image_path"])
 
         # TODO: consider use torch.Tensor only
-        rect = info["calib"]["R0_rect"].astype(np.float32)
-        Trv2c = info["calib"]["Tr_velo_to_cam"].astype(np.float32)
-        P2 = info["calib"]["P2"].astype(np.float32)
-        lidar2img = P2 @ rect @ Trv2c
+        # rect = info["calib"]["R0_rect"].astype(np.float32)
+        # Trv2c = info["calib"]["Tr_velo_to_cam"].astype(np.float32)
+        # P2 = info["calib"]["P2"].astype(np.float32)
+        # lidar2img = P2 @ rect @ Trv2c
 
         pts_filename = self._get_pts_filename(sample_idx)
         input_dict = dict(
@@ -137,7 +137,6 @@ class IphoneDataset(Custom3DDataset):
             pts_filename=pts_filename,
             img_prefix=None,
             img_info=dict(filename=img_filename),
-            lidar2img=lidar2img,
         )
 
         if not self.test_mode:
@@ -166,8 +165,8 @@ class IphoneDataset(Custom3DDataset):
         """
         # Use index to get the annos, thus the evalhook could also use this api
         info = self.data_infos[index]
-        rect = info["calib"]["R0_rect"].astype(np.float32)
-        Trv2c = info["calib"]["Tr_velo_to_cam"].astype(np.float32)
+        # rect = info["calib"]["R0_rect"].astype(np.float32)
+        # Trv2c = info["calib"]["Tr_velo_to_cam"].astype(np.float32)
 
         if "plane" in info:
             # convert ground plane to velodyne coordinates
@@ -200,9 +199,7 @@ class IphoneDataset(Custom3DDataset):
         ).astype(np.float32)
 
         # convert gt_bboxes_3d to velodyne coordinates
-        gt_bboxes_3d = CameraInstance3DBoxes(gt_bboxes_3d).convert_to(
-            self.box_mode_3d, np.linalg.inv(rect @ Trv2c)
-        )
+        gt_bboxes_3d = CameraInstance3DBoxes(gt_bboxes_3d).convert_to(self.box_mode_3d)
         gt_bboxes = annos["bbox"]
 
         selected = self.drop_arrays_by_name(gt_names, ["DontCare"])
@@ -679,6 +676,7 @@ class IphoneDataset(Custom3DDataset):
                 sample_idx=sample_idx,
             )
 
+        """
         rect = info["calib"]["R0_rect"].astype(np.float32)
         Trv2c = info["calib"]["Tr_velo_to_cam"].astype(np.float32)
         P2 = info["calib"]["P2"].astype(np.float32)
@@ -702,17 +700,18 @@ class IphoneDataset(Custom3DDataset):
             & (box_2d_preds[:, 2] > 0)
             & (box_2d_preds[:, 3] > 0)
         )
+        """
         # check box_preds
         limit_range = box_preds.tensor.new_tensor(self.pcd_limit_range)
         valid_pcd_inds = (box_preds.center > limit_range[:3]) & (
             box_preds.center < limit_range[3:]
         )
-        valid_inds = valid_cam_inds & valid_pcd_inds.all(-1)
+        valid_inds = valid_pcd_inds.all(-1)
 
         if valid_inds.sum() > 0:
             return dict(
-                bbox=box_2d_preds[valid_inds, :].numpy(),
-                box3d_camera=box_preds_camera[valid_inds].tensor.numpy(),
+                # bbox=box_2d_preds[valid_inds, :].numpy(),
+                # box3d_camera=box_preds_camera[valid_inds].tensor.numpy(),
                 box3d_lidar=box_preds[valid_inds].tensor.numpy(),
                 scores=scores[valid_inds].numpy(),
                 label_preds=labels[valid_inds].numpy(),

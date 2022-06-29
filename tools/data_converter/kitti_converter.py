@@ -423,9 +423,7 @@ def export_2d_annotation(root_path, info_path, mono3d=True):
     """
     # get bbox annotations for camera
     kitti_infos = mmcv.load(info_path)
-    import sys
 
-    sys.exit(kitti_infos)
     cat2Ids = [
         dict(id=kitti_categories.index(cat_name), name=cat_name)
         for cat_name in kitti_categories

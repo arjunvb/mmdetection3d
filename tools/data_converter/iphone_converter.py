@@ -34,7 +34,7 @@ def convert_to_iphone_info_version2(info):
             "P2": info["calib/P2"],
         }
         info["point_cloud"] = {
-            "velodyne_path": info["velodyne_path"],
+            "pcl_path": info["pcl_path"],
         }
 
 
@@ -79,9 +79,9 @@ class _NumPointsInGTCalculater:
         image_info = info["image"]
         calib = info["calib"]
         if self.relative_path:
-            v_path = str(Path(self.data_path) / pc_info["velodyne_path"])
+            v_path = str(Path(self.data_path) / pc_info["pcl_path"])
         else:
-            v_path = pc_info["velodyne_path"]
+            v_path = pc_info["pcl_path"]
         points_v = np.fromfile(v_path, dtype=np.float32, count=-1).reshape(
             [-1, self.num_features]
         )
@@ -120,14 +120,15 @@ def _calculate_num_points_in_gt(
     for info in mmcv.track_iter_progress(infos):
         pc_info = info["point_cloud"]
         image_info = info["image"]
-        calib = info["calib"]
+        # calib = info["calib"]
         if relative_path:
-            v_path = str(Path(data_path) / pc_info["velodyne_path"])
+            v_path = str(Path(data_path) / pc_info["pcl_path"])
         else:
-            v_path = pc_info["velodyne_path"]
+            v_path = pc_info["pcl_path"]
         points_v = np.fromfile(v_path, dtype=np.float32, count=-1).reshape(
             [-1, num_features]
         )
+        """
         rect = calib["R0_rect"]
         Trv2c = calib["Tr_velo_to_cam"]
         P2 = calib["P2"]
@@ -135,6 +136,7 @@ def _calculate_num_points_in_gt(
             points_v = box_np_ops.remove_outside_points(
                 points_v, rect, Trv2c, P2, image_info["image_shape"]
             )
+        """
 
         # points_v = points_v[points_v[:, 0] > 0]
         annos = info["annos"]
@@ -184,12 +186,12 @@ def create_iphone_info_file(
         data_path,
         training=True,
         velodyne=True,
-        calib=True,
+        calib=False,
         with_plane=with_plane,
         image_ids=train_img_ids,
         relative_path=relative_path,
     )
-    _calculate_num_points_in_gt(data_path, iphone_infos_train, relative_path)
+    # _calculate_num_points_in_gt(data_path, iphone_infos_train, relative_path)
     filename = save_path / f"{pkl_prefix}_infos_train.pkl"
     print(f"iphone info train file is saved to {filename}")
     mmcv.dump(iphone_infos_train, filename)
@@ -197,12 +199,12 @@ def create_iphone_info_file(
         data_path,
         training=True,
         velodyne=True,
-        calib=True,
+        calib=False,
         with_plane=with_plane,
         image_ids=val_img_ids,
         relative_path=relative_path,
     )
-    _calculate_num_points_in_gt(data_path, iphone_infos_val, relative_path)
+    # _calculate_num_points_in_gt(data_path, iphone_infos_val, relative_path)
     filename = save_path / f"{pkl_prefix}_infos_val.pkl"
     print(f"iphone info val file is saved to {filename}")
     mmcv.dump(iphone_infos_val, filename)
@@ -215,7 +217,7 @@ def create_iphone_info_file(
         training=False,
         label_info=False,
         velodyne=True,
-        calib=True,
+        calib=False,
         with_plane=False,
         image_ids=test_img_ids,
         relative_path=relative_path,
@@ -327,28 +329,28 @@ def _create_reduced_point_cloud(
     for info in mmcv.track_iter_progress(iphone_infos):
         pc_info = info["point_cloud"]
         image_info = info["image"]
-        calib = info["calib"]
+        # calib = info["calib"]
 
-        v_path = pc_info["velodyne_path"]
+        v_path = pc_info["pcl_path"]
         v_path = Path(data_path) / v_path
         points_v = np.fromfile(str(v_path), dtype=np.float32, count=-1).reshape(
             [-1, num_features]
         )
-        rect = calib["R0_rect"]
-        if front_camera_id == 2:
-            P2 = calib["P2"]
-        else:
-            P2 = calib[f"P{str(front_camera_id)}"]
-        Trv2c = calib["Tr_velo_to_cam"]
+        # rect = calib["R0_rect"]
+        # if front_camera_id == 2:
+        #    P2 = calib["P2"]
+        # else:
+        #    P2 = calib[f"P{str(front_camera_id)}"]
+        # Trv2c = calib["Tr_velo_to_cam"]
         # first remove z < 0 points
         # keep = points_v[:, -1] > 0
         # points_v = points_v[keep]
         # then remove outside.
         if back:
             points_v[:, 0] = -points_v[:, 0]
-        points_v = box_np_ops.remove_outside_points(
-            points_v, rect, Trv2c, P2, image_info["image_shape"]
-        )
+        # points_v = box_np_ops.remove_outside_points(
+        #    points_v, rect, Trv2c, P2, image_info["image_shape"]
+        # )
         if save_path is None:
             save_dir = v_path.parent.parent / (v_path.parent.stem + "_reduced")
             if not save_dir.exists():

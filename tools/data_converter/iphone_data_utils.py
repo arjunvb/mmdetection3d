@@ -12,9 +12,9 @@ from skimage import io
 
 def get_image_index_str(img_idx, use_prefix_id=False):
     if use_prefix_id:
-        return "{:07d}".format(img_idx)
+        return "{:09d}".format(img_idx)
     else:
-        return "{:06d}".format(img_idx)
+        return "{:09d}".format(img_idx)
 
 
 def get_iphone_info_path(
@@ -48,14 +48,14 @@ def get_image_path(
     training=True,
     relative_path=True,
     exist_check=True,
-    info_type="image_2",
+    info_type="img",
     use_prefix_id=False,
 ):
     return get_iphone_info_path(
         idx,
         prefix,
         info_type,
-        ".png",
+        ".jpg",
         training,
         relative_path,
         exist_check,
@@ -69,7 +69,7 @@ def get_label_path(
     training=True,
     relative_path=True,
     exist_check=True,
-    info_type="label_2",
+    info_type="lab",
     use_prefix_id=False,
 ):
     return get_iphone_info_path(
@@ -105,7 +105,7 @@ def get_plane_path(
     )
 
 
-def get_velodyne_path(
+def get_pcl_path(
     idx,
     prefix,
     training=True,
@@ -117,6 +117,26 @@ def get_velodyne_path(
         idx,
         prefix,
         "velodyne",
+        ".bin",
+        training,
+        relative_path,
+        exist_check,
+        use_prefix_id,
+    )
+
+
+def get_pcl_path(
+    idx,
+    prefix,
+    training=True,
+    relative_path=True,
+    exist_check=True,
+    use_prefix_id=False,
+):
+    return get_iphone_info_path(
+        idx,
+        prefix,
+        "pcl",
         ".bin",
         training,
         relative_path,
@@ -254,7 +274,7 @@ def get_iphone_image_info(
         }
         point_cloud: {
             num_features: 4
-            velodyne_path: ...
+            pcl_path: ...
         }
         [optional, for iphone]calib: {
             R0_rect: ...
@@ -283,9 +303,7 @@ def get_iphone_image_info(
         image_info = {"image_idx": idx}
         annotations = None
         if velodyne:
-            pc_info["velodyne_path"] = get_velodyne_path(
-                idx, path, training, relative_path
-            )
+            pc_info["pcl_path"] = get_pcl_path(idx, path, training, relative_path)
         image_info["image_path"] = get_image_path(idx, path, training, relative_path)
         if with_imageshape:
             img_path = image_info["image_path"]
@@ -381,7 +399,7 @@ class WaymoInfoGatherer:
         }
         point_cloud: {
             num_features: 6
-            velodyne_path: ...
+            pcl_path: ...
         }
         [optional, for iphone]calib: {
             R0_rect: ...
@@ -434,7 +452,7 @@ class WaymoInfoGatherer:
         image_info = {"image_idx": idx}
         annotations = None
         if self.velodyne:
-            pc_info["velodyne_path"] = get_velodyne_path(
+            pc_info["pcl_path"] = get_pcl_path(
                 idx, self.path, self.training, self.relative_path, use_prefix_id=True
             )
             with open(
@@ -542,7 +560,7 @@ class WaymoInfoGatherer:
         while len(sweeps) < self.max_sweeps:
             prev_info = {}
             prev_idx -= 1
-            prev_info["velodyne_path"] = get_velodyne_path(
+            prev_info["pcl_path"] = get_pcl_path(
                 prev_idx,
                 self.path,
                 self.training,
@@ -550,7 +568,7 @@ class WaymoInfoGatherer:
                 exist_check=False,
                 use_prefix_id=True,
             )
-            if_prev_exists = osp.exists(Path(self.path) / prev_info["velodyne_path"])
+            if_prev_exists = osp.exists(Path(self.path) / prev_info["pcl_path"])
             if if_prev_exists:
                 with open(
                     get_timestamp_path(
